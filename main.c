@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 
 typedef struct
 {
@@ -35,16 +36,16 @@ void writeByteToMemory(uint8_t dataByte, uint32_t address)
   // Flash memory
   if ((address >= FLASH_START) && (address <= FLASH_END))
   {
-    flash[(address - FLASH_START) / 4] = dataByte;
+    flash[(address - FLASH_START)] = dataByte;
   }
 }
 
-uint8_t readByteFromMemory(uint32_t address)
+uint8_t getByteFromMemory(uint32_t address)
 {
   // Flash memory
   if ((address >= FLASH_START) && (address <= FLASH_END))
   {
-    return flash[(address - FLASH_START) / 4];
+    return flash[(address - FLASH_START)];
   }
 }
 
@@ -67,22 +68,42 @@ int loadCodeToFlash()
     for (int i = 0; i < (sizeof(buf) / sizeof(buf[0])) - 1; i++)
     {
       writeByteToMemory((uint8_t)buf[i], curLoadAddr);
-      curLoadAddr += 4;
+      curLoadAddr++;
     }
   }
 
   return 0;
 }
 
+uint32_t getWordFromFlash(uint32_t address)
+{
+  return (getByteFromMemory(address + 3) << 24) | (getByteFromMemory(address + 2) << 16) | (getByteFromMemory(address + 1) << 8) | (getByteFromMemory(address));
+}
+
+uint16_t getHwFromFlash(uint32_t address)
+{
+  return (getByteFromMemory(address + 1) << 8) | (getByteFromMemory(address));
+}
+
 void setStartupRegisters()
 {
-  regs.r13 = (readByteFromMemory(FLASH_START + 12) << 24) | (readByteFromMemory(FLASH_START + 8) << 16) | (readByteFromMemory(FLASH_START + 4) << 8) | (readByteFromMemory(FLASH_START));
+  regs.r13 = getWordFromFlash(FLASH_START);
 
-  printf("%d\n", (readByteFromMemory(FLASH_START + 16)));
-  printf("%d\n", (readByteFromMemory(FLASH_START + 20)));
-  printf("%d\n", (readByteFromMemory(FLASH_START + 24)));
-  printf("%d\n", (readByteFromMemory(FLASH_START + 28)));
-  regs.r15 = (readByteFromMemory(FLASH_START + 28) << 24) | (readByteFromMemory(FLASH_START + 24) << 16) | (readByteFromMemory(FLASH_START + 20) << 8) | (readByteFromMemory(FLASH_START + 16));
+  regs.r15 = getWordFromFlash(FLASH_START + 4);
+}
+
+uint32_t fetchCurIns()
+{
+  uint16_t firstHw = getHwFromFlash(regs.r15);
+  uint8_t highByte = (uint8_t)(firstHw >> 8);
+
+  // 32 bit instruction
+  if (highByte == 29 || highByte == 30 || highByte == 31)
+  {
+    return (getHwFromFlash(regs.r15 + 2) << 16) | firstHw;
+  }
+
+  return (uint32_t)firstHw;
 }
 
 int main()
@@ -96,8 +117,15 @@ int main()
 
   setStartupRegisters();
 
-  printf("Initial stack pointer: %d\n", regs.r13);
-  printf("Initial program counter: %d\n", regs.r15);
+  printf("Initial stack pointer: %u\n", regs.r13);
+  printf("Initial program counter: %u\n", regs.r15);
+
+  while (1)
+  {
+    uint32_t curIns = fetchCurIns();
+    printf("Cur instruction: %u\n", curIns);
+    break;
+  }
 
   return 0;
 }

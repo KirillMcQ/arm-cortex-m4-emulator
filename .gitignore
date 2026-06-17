@@ -1,2 +1,5 @@
 .vscode
 main.dSYM
+main
+*.bin
+*.elf
