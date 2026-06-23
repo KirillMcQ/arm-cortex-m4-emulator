@@ -3,4 +3,7 @@
 #include <stdint.h>
 #include "memory.h"
 
-uint32_t fetchCurIns(uint32_t r15);
+extern Registers regs;
+
+uint32_t fetchCurIns();
+void decodeAndExecuteIns(uint32_t encoding);

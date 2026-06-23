@@ -3,9 +3,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-extern const uint32_t FLASH_START;
-extern const uint32_t FLASH_END;
-
 typedef struct
 {
   uint32_t r0;
@@ -27,6 +24,11 @@ typedef struct
   uint32_t xPSR;
 } Registers;
 
+extern const uint32_t FLASH_START;
+extern const uint32_t FLASH_END;
+extern Registers regs;
+
+
 uint8_t flash[1024];
 uint8_t ram[2048];
 
@@ -40,4 +42,8 @@ uint32_t getWordFromFlash(uint32_t address);
 
 uint16_t getHwFromFlash(uint32_t address);
 
-void setStartupRegisters(uint32_t *r13, uint32_t *r15);
+void initRegisters();
+
+void writeToRegister(uint32_t val, uint32_t reg);
+
+uint32_t readRegister(uint32_t reg);
