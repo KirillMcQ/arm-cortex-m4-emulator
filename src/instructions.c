@@ -1,9 +1,15 @@
 #include "instructions.h"
+#include "memory.h"
+#include "cpu.h"
+
+extern Registers regs;
 
 static void execute16BitIns(uint16_t encoding);
 static void execute32BitIns(uint32_t encoding);
 static void executeShiftMathMoveCompare(uint16_t encoding);
+static void executeMiscellaneous16BitInstructions(uint16_t encoding);
 static void handleLSLImmediate(uint16_t encoding);
+static void handleIT(uint16_t encoding);
 
 uint32_t fetchCurIns()
 {
@@ -39,6 +45,11 @@ static void execute16BitIns(uint16_t encoding)
   {
     // A5.2.1
     executeShiftMathMoveCompare(encoding);
+  }
+  else if ((opcode >> 2) == 11)
+  {
+    // TODO: Out of order, but this implementation is foundational for other instructions' implementation
+    executeMiscellaneous16BitInstructions(encoding);
   }
 }
 
@@ -81,4 +92,32 @@ static void handleLSLImmediate(uint16_t encoding)
   printf("imm5: %u, rm: %u, rd: %u, result: %u\n", imm5, rm, rd, result);
 
   writeToRegister(result, rd);
+}
+
+/*
+ * The functions handle: Miscellaneous 16-bit instructions
+ * Section in Armv7-M Reference Manual: A5.2.5
+*/
+static void executeMiscellaneous16BitInstructions(uint16_t encoding)
+{
+  uint8_t opcode = (encoding >> 5) & 127;
+
+  // TODO: Out of place, but implementing IT first is foundational to the emulator. Will be fixed.
+  if ((opcode >> 3) == 15)
+  {
+    handleIT(encoding);
+  }
+}
+
+static void handleIT(uint16_t encoding)
+{
+  uint8_t firstCond = (encoding >> 4) & 15;
+  uint8_t mask = encoding & 15;
+
+  setITSTATE((firstCond << 4) | mask);
+}
+
+bool isInstruction16Bit(uint32_t encoding)
+{
+  return (encoding >> 16) == 0;
 }

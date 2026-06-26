@@ -3,8 +3,7 @@
 #include <math.h>
 #include "memory.h"
 #include "instructions.h"
-
-extern Registers regs;
+#include "cpu.h"
 
 int main()
 {
@@ -18,24 +17,39 @@ int main()
 
   initRegisters();
 
-  printf("Initial stack pointer: %u\n", regs.r13);
-  printf("Initial program counter: %u\n", regs.r15);
+  printf("Initial stack pointer: %u\n", readRegister(13));
+  printf("Initial program counter: %u\n", readRegister(15));
 
   while (1)
   {
-    /*
-     * Put in a fake LSL instruction to test
-     * Example: LSL r1, r0, 3
-     * r0: 8
-     * Expected r1: 32
-     */
-    writeToRegister(0, 4);
-    writeByteToMemory(193, 0x800019D);
-    writeByteToMemory(0, 0x800019E);
     uint32_t curIns = fetchCurIns();
     printf("Cur instruction: %u\n", curIns);
-    decodeAndExecuteIns(curIns);
-    printf("r1: %u\n", regs.r1);
+
+    if (shouldExecuteInstruction())
+    {
+      decodeAndExecuteIns(curIns);
+    }
+    else
+    {
+      printf("Treating instruction like nop due to IT condition\n");
+    }
+
+    if (!getDidCurInsUpdatePC())
+    {
+      if (isInstruction16Bit(curIns))
+      {
+        incrementPC(2);
+      }
+      else
+      {
+        incrementPC(4);
+      }
+    }
+    else
+    {
+      setDidCurInsUpdatePC(0);
+    }
+
     break;
   }
 
