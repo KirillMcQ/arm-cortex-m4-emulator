@@ -22,8 +22,15 @@ int main()
 
   while (1)
   {
+    // Test instruction, cur is LSR
+    writeToRegister(5, 0);
+    writeToRegister(10, 1);
+    writeByteToMemory(1, readRegister(15));
+    writeByteToMemory(8, readRegister(15) + 1);
+
     uint32_t curIns = fetchCurIns();
     printf("Cur instruction: %u\n", curIns);
+
 
     if (shouldExecuteInstruction())
     {
@@ -49,6 +56,9 @@ int main()
     {
       setDidCurInsUpdatePC(0);
     }
+
+    printf("r0: %u, r1: %u, pc: %u\n", readRegister(0), readRegister(1), readRegister(15));
+    printf("xPSR: %u\n", regs.xPSR);
 
     break;
   }

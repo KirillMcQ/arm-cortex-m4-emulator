@@ -54,7 +54,6 @@ uint32_t readRegister(uint32_t reg)
     case 15:
       return regs.r15;
     default:
-      // Code wouldn't compile if the program could get here
       return 0;
       break;
   }
@@ -238,4 +237,34 @@ bool getDidCurInsUpdatePC()
 void setDidCurInsUpdatePC(bool val)
 {
   didCurInsUpdatePC = val;
+}
+
+void setConditionBitN(uint8_t val)
+{
+  regs.xPSR &= ~(1 << 31);
+  regs.xPSR |= (val << 31);
+}
+
+void setConditionBitZ(uint8_t val)
+{
+  regs.xPSR &= ~(1 << 30);
+  regs.xPSR |= (val << 30);
+}
+
+void setConditionBitC(uint8_t val)
+{
+  regs.xPSR &= ~(1 << 29);
+  regs.xPSR |= (val << 29);
+}
+
+void setConditionBitV(uint8_t val)
+{
+  regs.xPSR &= ~(1 << 28);
+  regs.xPSR |= (val << 28);
+}
+
+void setConditionBitQ(uint8_t val)
+{
+  regs.xPSR &= ~(1 << 27);
+  regs.xPSR |= (val << 27);
 }

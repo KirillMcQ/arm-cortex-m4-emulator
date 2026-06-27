@@ -45,3 +45,13 @@ bool isLastInITBlock();
 bool getDidCurInsUpdatePC();
 
 void setDidCurInsUpdatePC(bool val);
+
+void setConditionBitN(uint8_t val);
+
+void setConditionBitZ(uint8_t val);
+
+void setConditionBitC(uint8_t val);
+
+void setConditionBitV(uint8_t val);
+
+void setConditionBitQ(uint8_t val);

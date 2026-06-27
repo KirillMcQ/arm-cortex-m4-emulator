@@ -9,6 +9,8 @@ static void execute32BitIns(uint32_t encoding);
 static void executeShiftMathMoveCompare(uint16_t encoding);
 static void executeMiscellaneous16BitInstructions(uint16_t encoding);
 static void handleLSLImmediate(uint16_t encoding);
+static void handleLSRImmediate(uint16_t encoding);
+// static void handleASRImmediate(uint16_t encoding);
 static void handleIT(uint16_t encoding);
 
 uint32_t fetchCurIns()
@@ -64,21 +66,21 @@ static void execute32BitIns(uint32_t encoding)
 
 static void executeShiftMathMoveCompare(uint16_t encoding)
 {
-  // uint8_t closest to 5 bits, opcode is 5 bits
-  uint8_t opcode = (opcode << 2) >> 11;
-  
+  uint8_t opcode = (encoding >> 9) & 31;
   switch (opcode >> 2)
   {
     // LSL
     case 0:
       handleLSLImmediate(encoding);
       break;
+    case 1:
+      handleLSRImmediate(encoding);
+      break;
   }
 }
 
 static void handleLSLImmediate(uint16_t encoding)
 {
-  printf("encoding: %u\n", encoding);
   // uint8_t closest to 5 bits, imm5 is 5 bits
   uint8_t imm5 = (encoding >> 6);
 
@@ -88,8 +90,56 @@ static void handleLSLImmediate(uint16_t encoding)
 
   uint32_t rm_val = readRegister(rm);
   uint32_t result = (rm_val << imm5);
+  uint8_t carry = (((((uint64_t) rm_val) << imm5)) >> 32) & 1;
 
-  printf("imm5: %u, rm: %u, rd: %u, result: %u\n", imm5, rm, rd, result);
+  if (!isInITBlock())
+  {
+    setConditionBitN((uint8_t) ((result >> 31) & 1));
+    setConditionBitZ((uint8_t) (result == 0));
+    if (imm5 != 0)
+    {
+      setConditionBitC(carry);
+    }
+  }
+
+  writeToRegister(result, rd);
+}
+
+static void handleLSRImmediate(uint16_t encoding)
+{
+  // uint8_t closest to 5 bits, imm5 is 5 bits
+  uint8_t imm5 = (encoding >> 6) & 31;
+
+  // Same for rm and rd, but rm and rd are each 3 bits
+  uint8_t rm = (uint16_t)(encoding << 10) >> 13;
+  uint8_t rd = (uint16_t)(encoding << 13) >> 13;
+
+  uint32_t rm_val = readRegister(rm);
+
+  uint32_t result = (rm_val >> imm5);
+
+  if (imm5 == 0)
+  {
+    result = 0;
+  }
+
+  uint8_t carry;
+
+  if (imm5 == 0)
+  {
+    carry = (rm_val >> 31) & 1;
+  }
+  else
+  {
+    carry = (rm_val >> (imm5 - 1)) & 1;
+  }
+
+  if (!isInITBlock())
+  {
+    setConditionBitN((uint8_t) ((result >> 31) & 1));
+    setConditionBitZ((uint8_t) (result == 0));
+    setConditionBitC(carry);
+  }
 
   writeToRegister(result, rd);
 }
