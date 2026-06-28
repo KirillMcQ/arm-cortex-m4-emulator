@@ -10,7 +10,7 @@ static void executeShiftMathMoveCompare(uint16_t encoding);
 static void executeMiscellaneous16BitInstructions(uint16_t encoding);
 static void handleLSLImmediate(uint16_t encoding);
 static void handleLSRImmediate(uint16_t encoding);
-// static void handleASRImmediate(uint16_t encoding);
+static void handleASRImmediate(uint16_t encoding);
 static void handleIT(uint16_t encoding);
 
 uint32_t fetchCurIns()
@@ -76,21 +76,22 @@ static void executeShiftMathMoveCompare(uint16_t encoding)
     case 1:
       handleLSRImmediate(encoding);
       break;
+    case 2:
+      handleASRImmediate(encoding);
+      break;
   }
 }
 
 static void handleLSLImmediate(uint16_t encoding)
 {
-  // uint8_t closest to 5 bits, imm5 is 5 bits
-  uint8_t imm5 = (encoding >> 6);
+  uint8_t imm5 = (encoding >> 6) & 31;
 
-  // Same for rm and rd, but rm and rd are each 3 bits
   uint8_t rm = (uint16_t)(encoding << 10) >> 13;
   uint8_t rd = (uint16_t)(encoding << 13) >> 13;
 
-  uint32_t rm_val = readRegister(rm);
-  uint32_t result = (rm_val << imm5);
-  uint8_t carry = (((((uint64_t) rm_val) << imm5)) >> 32) & 1;
+  uint32_t rmVal = readRegister(rm);
+  uint32_t result = (rmVal << imm5);
+  uint8_t carry = (((((uint64_t) rmVal) << imm5)) >> 32) & 1;
 
   if (!isInITBlock())
   {
@@ -107,16 +108,14 @@ static void handleLSLImmediate(uint16_t encoding)
 
 static void handleLSRImmediate(uint16_t encoding)
 {
-  // uint8_t closest to 5 bits, imm5 is 5 bits
   uint8_t imm5 = (encoding >> 6) & 31;
 
-  // Same for rm and rd, but rm and rd are each 3 bits
   uint8_t rm = (uint16_t)(encoding << 10) >> 13;
   uint8_t rd = (uint16_t)(encoding << 13) >> 13;
 
-  uint32_t rm_val = readRegister(rm);
+  uint32_t rmVal = readRegister(rm);
 
-  uint32_t result = (rm_val >> imm5);
+  uint32_t result = (rmVal >> imm5);
 
   if (imm5 == 0)
   {
@@ -127,11 +126,11 @@ static void handleLSRImmediate(uint16_t encoding)
 
   if (imm5 == 0)
   {
-    carry = (rm_val >> 31) & 1;
+    carry = (rmVal >> 31) & 1;
   }
   else
   {
-    carry = (rm_val >> (imm5 - 1)) & 1;
+    carry = (rmVal >> (imm5 - 1)) & 1;
   }
 
   if (!isInITBlock())
@@ -141,6 +140,66 @@ static void handleLSRImmediate(uint16_t encoding)
     setConditionBitC(carry);
   }
 
+  writeToRegister(result, rd);
+}
+
+static void handleASRImmediate(uint16_t encoding)
+{
+  uint8_t imm5 = (encoding >> 6) & 31;
+
+  uint8_t rm = (encoding >> 3) & 7;
+  uint8_t rd = encoding & 7;
+
+  uint32_t rmVal = readRegister(rm);
+
+  unsigned int leftmostBit = (rmVal >> 31) & 1;
+
+  
+  uint8_t carry;
+  
+  if (imm5 == 0)
+  {
+    carry = (rmVal >> 31) & 1;
+  }
+  else
+  {
+    carry = (rmVal >> (imm5 - 1)) & 1;
+  }
+  
+  uint32_t result;
+  
+  if (imm5 != 0)
+  {
+    if (leftmostBit == 0)
+    {
+      result = rmVal >> imm5;
+    }
+    else
+    {
+      uint32_t mask = (1U << imm5) - 1;
+      
+      result = (mask << (32 - imm5)) | (rmVal >> imm5);
+    }
+  }
+  else
+  {
+    if (leftmostBit == 0)
+    {
+      result = 0;
+    }
+    else
+    {
+      result = 0xFFFFFFFF;
+    }
+  }
+  
+  if (!isInITBlock())
+  {
+    setConditionBitN((result >> 31) & 1);
+    setConditionBitZ(result == 0);
+    setConditionBitC(carry);
+  }
+  
   writeToRegister(result, rd);
 }
 
